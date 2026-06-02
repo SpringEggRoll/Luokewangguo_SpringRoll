@@ -3,7 +3,7 @@ AI生成网页进行相对较优的无限制网络计算，不需要提前锁定
 
 项目源代码地址：https://github.com/SpringEggRoll/Luokewangguo_SpringRoll/tree/main
 
-部署网址：
+部署网址：https://chat.qwen.ai/s/deploy/t_722dd8ef-83d4-4095-b6f3-ac3e626bdffe
 
 【数据管理】使用内置数据即可，如果想上传自己的蛋组，上传含有组别和精灵名称的表格文件即可
 
