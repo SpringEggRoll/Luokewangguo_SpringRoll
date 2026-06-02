@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>洛克王国孵蛋配对网络</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg: #FFF9F0; --card: #FFFFFF; --pink: #FF8FA3; --cyan: #4ECDC4; --yellow: #FFE66D;
+            --text: #2D3436; --text-light: #636E72;
+            --border: 3px solid #FFB3C6; --shadow: 6px 6px 0px #FFD1DC; --radius: 18px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Comic Sans MS', 'Chalkboard SE', 'Nunito', 'Microsoft YaHei', sans-serif; }
+        body { background: var(--bg); background-image: radial-gradient(#FFE66D 10%, transparent 10%), radial-gradient(#4ECDC4 10%, transparent 10%); background-size: 24px 24px; background-position: 0 0, 12px 12px; color: var(--text); padding: 16px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; color: #FF6B6B; text-shadow: 2px 2px 0px #FFE66D; letter-spacing: 2px; }
+        .grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
+        @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+        .card { background: var(--card); border: var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 18px; box-shadow: var(--shadow); }
+        .card-title { font-size: 1rem; font-weight: 800; color: #FF6B6B; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 2px dashed #FFE66D; padding-bottom: 6px; }
+        label { font-weight: 600; color: #4A5568; display: block; margin-bottom: 4px; font-size: 0.85rem; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 8px 10px; border: 2px solid #E2E8F0; border-radius: 10px; font-size: 0.9rem; background: #FAFAFA; transition: all 0.2s; }
+        input:focus { outline: none; border-color: var(--cyan); background: #FFF; }
+        .row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .group { flex: 1; }
+        .upload { border: 3px dashed #FFE66D; border-radius: 14px; padding: 14px; text-align: center; background: #FFFDF5; cursor: pointer; margin-bottom: 10px; transition: all 0.2s; }
+        .upload:hover { background: #FFF8E1; border-color: var(--pink); }
+        .upload p { font-size: 0.8rem; color: #7F8C8D; margin-top: 2px; }
+        .btn { width: 100%; padding: 10px; border: 3px solid #FF6B6B; border-radius: 12px; background: #FF8FA3; color: #FFF; font-size: 1rem; font-weight: 800; cursor: pointer; transition: all 0.15s; box-shadow: 4px 4px 0px #FF6B6B; margin-top: 10px; }
+        .btn:hover { background: #FF6B6B; transform: translateY(-2px); }
+        .btn:active { transform: translateY(2px); box-shadow: none; }
+        .btn:disabled { background: #CBD5E1; border-color: #94A3B8; box-shadow: none; cursor: not-allowed; transform: none; }
+        .btn-reset { background: #A0AEC0; border-color: #718096; margin-top: 8px; box-shadow: 4px 4px 0px #718096; }
+        .btn-reset:hover { background: #718096; }
+        .tag { display: inline-block; padding: 1px 5px; border-radius: 6px; font-size: 0.7rem; font-weight: bold; margin-left: 3px; }
+        .tag-shiny { background: #FEF08A; color: #A16207; border: 1px solid #FDE047; }
+        .tag-fix { background: #E0F2FE; color: #0284C7; border: 1px solid #7DD3FC; }
+        .tag-both { background: #FCE7F3; color: #9D174D; border: 1px solid #F9A8D4; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 6px; }
+        th { background: #FFF3CD; padding: 8px; border-bottom: 2px solid #FFE66D; text-align: left; font-weight: 700; }
+        td { padding: 6px 8px; border-bottom: 2px dashed #EDF2F7; }
+        .status { padding: 8px; border-radius: 10px; font-weight: 600; margin-bottom: 10px; display: none; text-align: center; font-size: 0.9rem; line-height: 1.5; }
+        .status.succ { background: #D1FAE5; color: #065F46; border: 2px solid #A7F3D0; }
+        .status.warn { background: #FFF3CD; color: #92400E; border: 2px solid #FDE68A; }
+        .status.err { background: #FEE2E2; color: #991B1B; border: 2px solid #FECACA; white-space: pre-line; }
+        .svg-box { width: 100%; height: 360px; background: #F8FAFC; border: 3px dashed #CBD5E1; border-radius: 14px; position: relative; margin-top: 12px; overflow: hidden; }
+        .tip { position: fixed; background: #2D3436; color: #FFF; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; pointer-events: none; z-index: 100; display: none; box-shadow: 0 3px 8px rgba(0,0,0,0.2); border: 2px solid #FFE66D; }
+        .spirit-list { background: #FFF; border: 3px solid #FFE66D; border-radius: 14px; padding: 14px; margin-top: 16px; }
+        .spirit-list h3 { font-size: 0.95rem; color: #FF6B6B; margin-bottom: 8px; }
+        .spirits-wrap { max-height: 120px; overflow-y: auto; padding: 4px; font-size: 0.8rem; color: #636E72; line-height: 1.8; }
+        .spirits-wrap span { margin-right: 6px; cursor: pointer; }
+        .spirits-wrap span:hover { color: #FF6B6B; }
+        footer { text-align: center; padding: 16px 0 8px; color: #94A3B8; font-size: 0.75rem; line-height: 1.6; }
+        footer a { color: var(--cyan); text-decoration: none; font-weight: 700; }
+        footer a:hover { text-decoration: underline; }
+        .warn { color: #EF4444; font-size: 0.8rem; text-align: center; margin-top: 4px; min-height: 1em; }
+        .info { font-size: 0.75rem; color: #94A3B8; margin-top: 4px; line-height: 1.4; }
+        .help-card { background: #F0F9FF; border: 3px solid #BAE6FD; }
+        .help-card .card-title { color: #0369A1; border-bottom-color: #7DD3FC; }
+        .help-text { font-size: 0.82rem; color: #0C4A6E; line-height: 1.6; }
+        .help-text p { margin-bottom: 6px; }
+        .help-text b { color: #0284C7; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header><h1>🥚 洛克王国孵蛋配对网络</h1></header>
+    <div class="grid">
+        <div class="left-panel">
+            <div class="card help-card">
+                <div class="card-title">📖 使用说明</div>
+                <div class="help-text">
+                    <p><b>【数据管理】</b>使用内置数据即可</p>
+                    <p><b>【孵化参数】</b></p>
+                    <p>（1）选择父本和母本数量，二者之和的最大值为10</p>
+                    <p>（2）指定母本和父本：输入精灵名称，用逗号隔开。由于内置精灵仅使用最高形态或多形态中的其中一种形态，使用前可以在页面底部“内置精灵名录”中查找，以防输入的精灵信息不存在</p>
+                    <p>（3）指定期望的异色父母本数</p>
+                    <p>（4）排除精灵：在生成结果之前可以填写自己没有的精灵进行排除计算；结果网络中可能有缺失连接的精灵，填写然后再次生成即可；此外，如果生成网络中存在单一连接的，可以将任一父母本排除然后再计算，可能会出现更优的网络</p>
+                    <p>（5）网络计算默认使用不重复的精灵进行网络计算，因此如果有重复精灵请输入指定母本和父本进行计算</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📦 数据管理</div>
+                <div class="upload" id="dropZone"><div style="font-size:1.8rem">📄</div><p>拖拽或点击上传 .xlsx</p><input type="file" id="fileInput" accept=".xlsx,.csv" style="display:none"></div>
+                <div style="font-size:0.75rem; color:#7F8C8D; text-align:center; margin-bottom:6px;">收录：<span id="statC">0</span> 精灵 | <span id="statG">0</span> 分组</div>
+            </div>
+            <div class="card">
+                <div class="card-title">⚙️ 孵化参数</div>
+                <div class="row">
+                    <div class="group"><label>父本 ♂</label><input type="number" id="fNum" value="3" min="0" max="10"></div>
+                    <div class="group"><label>母本 ♀</label><input type="number" id="mNum" value="4" min="1" max="10"></div>
+                </div>
+                <div class="row"><div class="group"><label>🎯 目标配对数 (选填)</label><input type="number" id="targetE" placeholder="留空则默认最大配对" min="0" max="50"></div></div>
+                <div class="info">💡 权重规则：仅当父母本<span style="color:#B45309;font-weight:bold">均为异色</span>时该连接权重为 1.5；孤立精灵会被自动剔除重新搜索。</div>
+                <div class="row">
+                    <div class="group"><label>👩 指定母本</label><input type="text" id="fixM" placeholder="名1, 名2"></div>
+                    <div class="group"><label>👨 指定父本</label><input type="text" id="fixF" placeholder="名1, 名2"></div>
+                </div>
+                <div class="info">⚠️ 指定精灵 + 网络中每个精灵都必须有至少一条连线</div>
+                
+                <div class="row" style="background:#FFFDF5; border:2px solid #FDE047; padding:8px; border-radius:8px">
+                    <div class="group">
+                        <label style="color:#B45309">✨ 期望异色母本数</label>
+                        <input type="number" id="sNum" value="0" min="0" max="10" style="border-color:#F59E0B">
+                    </div>
+                    <div class="group">
+                        <label style="color:#B45309">✨ 期望异色父本数</label>
+                        <input type="number" id="fShinyNum" value="0" min="0" max="10" style="border-color:#F59E0B">
+                    </div>
+                </div>
+                <div class="info" style="color:#B45309; margin-bottom:10px;">💡 填 0 = 不限制；填 N = 恰好 N 个异色精灵</div>
+                
+                <div class="group" style="margin-bottom:10px">
+                    <label>🚫 排除精灵 (抓捕困难/无母本)</label>
+                    <input type="text" id="exclInput" placeholder="如：上岸蛙, 罗隐">
+                </div>
+                <button id="btnGo" class="btn">⚡ 开始计算</button>
+                <button id="btnReset" class="btn btn-reset">↻ 重置参数</button>
+                <div id="wMsg" class="warn"></div>
+            </div>
+        </div>
+        <div class="right-panel">
+            <div class="card">
+                <div class="card-title">📊 结果与网络</div>
+                <div id="sBox" class="status"></div>
+                <div id="rArea"><div style="text-align:center; padding:30px; color:#A0AEC0; font-size:0.95rem">🎈 点击左侧按钮，这里会出现配对连线哦！</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="spirit-list">
+        <h3>📖 内置精灵名录</h3>
+        <div class="spirits-wrap" id="sList"></div>
+    </div>
+    <footer>
+        <div style="margin-bottom: 6px;">🥚 异色蛋培育参考：<a href="#" target="_blank">洛的精灵蛋助手</a> · <a href="#" target="_blank">智能配窝助手</a></div>
+        <div style="margin-bottom: 6px;">🏠 小窝分布参考：<a href="#" target="_blank">小窝排布计算器</a></div>
+        <div>📖 蛋组参考：<a href="https://wiki.pokepet.cn/" target="_blank">洛克王国世界Wiki</a> · <a href="#" target="_blank">洛克工具箱</a></div>
+    </footer>
+</div>
+<div id="tip" class="tip"></div>
+
+<script>
+const App = {
+    spirits: new Map(), fixedM: [], fixedF: [], candidates: [], excluded: new Set(), all: [],
+    best: { score: -1, m: [], f: [], edges: [], feasibleFound: false, shinyCount: 0, fShinyCount: 0, shinyWarning: null, bothShinyEdges: 0 }
+};
+
+let uidGen = 0;
+function resetUid() { uidGen = 0; }
+function makeInstance(name) {
+    const base = App.spirits.get(name);
+    if (!base) return null;
+    return { name: base.name, groups: base.groups, isShiny: base.isShiny, uid: uidGen++ };
+}
+
+const DEF_DATA = [
+    {g:"动物组",s:["魔力猫","花影羚羊","卷胡巨獭","音速犬","绿耳松鼠","巨噬针鼹","电球咩咩","星光狮","白金独角兽","黑猫巫师","影狸","恶魔狼","獠牙猪","尖嘴狐仙","针叶巡林","炽心勇狮","怒目怂猫","皇家狮鹫","海豹船长","流浪鼠","白发路路","梦想三三","寒音蛇","爵士鹿","裘卡","红绒十字","绒光优优","遁地鼠","月牙雪熊","春花兔","巨鼓象","音碟吼","霹雳迪迪","雅丹鬃"]},
+    {g:"拟人组",s:["魔力猫","瞌睡王","朔夜伊芙","魔草巫灵","花衣蝶","影狸","古啦多","雪巨人","雪影娃娃","怒目怂猫","流浪鼠","白发路路","火焰猿","立方人","绅士鸡","厉毒修萝","帅帅魔偶","小丑公爵"]},
+    {g:"巨灵组",s:["火神","布克棱岩","瞌睡王","海盔虫","罗隐","白金独角兽","雪巨人","梦想三三","恶魔红钻","烈火守护","波多西","火焰猿","乌拉塔","噼啪鸟","深蓝鲸","圣剑-X","寂灭骨龙","画间沉铁兽","古卷执政官","月牙雪熊","夜枭","暮星辰"]},
+    {g:"魔力组",s:["火神","水灵","幻影灵菇","幽冥眼","梦悠悠","巨灵石","荆棘电环","圣代甜甜","抹茶布丁","夜枭","烟花伯爵"]},
+    {g:"天空组",s:["鸭吉吉","岚鸟","蒲公英娃娃","花魁蜂后","翠顶夫人","锤头鹳","咔咔鸟","魔眷鸟","彩蝶鲨","电企鹅","公平鸽","皇家狮鹫","斑枭","卷毛鸭","翼龙","高脚鹬","帕帕斯卡","绅士鸡","噼啪鸟","铠甲虫","泥吼牙","厉毒修萝","落陨星兔"]},
+    {g:"两栖组",s:["水泡壳","石冠王蜥","卷胡巨獭","卡瓦重","翠顶夫人","游蛇魔使","嗜波螺","卷毛鸭","海豹船长","鳗尾兽","寒音蛇","泥吼牙","上岸蛙","加油蟹"]},
+    {g:"植物组",s:["幻影灵菇","幽影树","奇丽花","兽花蕾","蹦蹦花","蒲公英娃娃","伊贝粉粉","菊花梨","风滚暮虫","怖哭菇","九幽菇","海枝枝","格兰球","燃薪虫"]},
+    {g:"大地组",s:["石冠王蜥","布克棱岩","晶石蜗","嘟嘟锅","记忆石","罗隐","巨灵石","仪式巨像","嗜波螺","霹雳迪迪"]},
+    {g:"妖精组",s:["叮叮恶魔","幽影树","嘟嘟锅","梦悠悠","朔夜伊芙","魔草巫灵","魔眷鸟","仪式巨像","黑猫巫师","雪灵","雪影娃娃","游蛇魔使","圆号鱼","卡洛儿","棋绮后","酷拉","迷迷箱怪","里拉鳐","裘卡","红绒十字","格兰球","食尘短绒","画间沉铁兽","古卷执政官","小皮球","落陨星兔","春花兔","暮星辰","加油蟹","帅帅魔偶","小丑公爵","咕德帽帽"]},
+    {g:"昆虫组",s:["化蝶","花魁蜂后","花衣蝶","风滚暮虫","芋香巨角蛛","恶魔红钻","铠甲虫","食尘短绒","陨星虫","窃光蚊","燃薪虫"]},
+    {g:"软体组",s:["化蝶","晶石蜗","伊贝粉粉","卡洛儿","圣代甜甜","琉璃水母","冰钻布鲁斯","秩序鱿墨","小皮球"]},
+    {g:"机械组",s:["权杖-Ⅴ","迷迷箱怪","波多西","声波缇塔","帕帕斯卡","立方人","圣剑-X","贝古斯","巨鼓象","音碟吼","烟花伯爵"]},
+    {g:"海洋组",s:["海盔虫","彩蝶鲨","圆号鱼","鳗尾兽","里拉鳐","海枝枝","月亮砣","龙鱼","闪电鳗鱼","琉璃水母","冰钻布鲁斯","深蓝鲸","秩序鱿墨","抹茶布丁","利灯鱼"]},
+    {g:"龙组",s:["伊兰龙","翼龙","龙鱼","寂灭骨龙"]}
+];
+const SHINY_LIST = ["公平鸽","加油蟹","叮叮恶魔","咕德帽帽","嘟嘟锅","夜枭","奇丽花","小丑公爵","小皮球","尖嘴狐仙","巨鼓象","帅帅魔偶","幽影树","恶魔狼","月牙雪熊","朔夜伊芙","格兰球","烟花伯爵","燃薪虫","窃光蚊","立方人","落陨星兔","红绒十字","菊花梨","贝古斯","酷拉","雅丹鬃","雪影娃娃","霹雳迪迪","音碟吼","獠牙猪"];
+
+function addSpirit(name, group, isShiny=false) {
+    if(!name) return;
+    if(!App.spirits.has(name)) App.spirits.set(name, {name, groups:new Set(), isShiny:false});
+    const s = App.spirits.get(name);
+    if(group) s.groups.add(group);
+    if(isShiny) s.isShiny=true;
+}
+
+function init() {
+    DEF_DATA.forEach(d => d.s.forEach(n => addSpirit(n, d.g)));
+    SHINY_LIST.forEach(n => { if(App.spirits.has(n)) App.spirits.get(n).isShiny=true; });
+    renderList(); updateStats();
+}
+
+function parseExcel(file) {
+    const r = new FileReader();
+    r.onload = e => {
+        try {
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+            App.spirits.clear(); let cg = null, flag = false;
+            rows.forEach(row => {
+                if(!row || row.length<2) return;
+                const c = row.map(v => typeof v==='string'?v.trim():String(v||''));
+                if(c[0]?.includes('组')) cg=c[0];
+                if(c[3]==='异色') flag=true; else if(!c[3]) flag=false;
+                if(cg && c[1]) addSpirit(c[1], cg, flag);
+                if(flag && c[4]) addSpirit(c[4], cg, true);
+            });
+            renderList(); updateStats(); showStatus('✅ 表格加载成功！','succ');
+        } catch(err) { showStatus('⚠️ 解析失败: '+err.message, 'err'); }
+    };
+    r.readAsArrayBuffer(file);
+}
+
+function getShared(sA, sB) {
+    const sh = [];
+    for(const g of sA.groups) if(sB.groups.has(g) && !g.includes('异色')) sh.push(g);
+    return sh;
+}
+
+function calcWeight(m, f, enShiny) {
+    return (enShiny && m.isShiny && f.isShiny) ? 1.5 : 1.0;
+}
+
+function solve() {
+    const fReq = +document.getElementById('fNum').value||0, mReq = +document.getElementById('mNum').value||0;
+    const sTargetRaw = +document.getElementById('sNum').value||0;
+    const fShinyTargetRaw = +document.getElementById('fShinyNum').value||0;
+    const targetEVal = document.getElementById('targetE').value.trim();
+    const targetE = targetEVal === '' ? 0 : +targetEVal;
+    const enShiny = true;
+    const tot = fReq + mReq;
+    
+    if(tot>10||tot===0||mReq<1) throw new Error('总数需1~10，母本≥1');
+    if(sTargetRaw>mReq) throw new Error('异色母本数不能超过母本总数('+mReq+')');
+    if(fShinyTargetRaw>fReq) throw new Error('异色父本数不能超过父本总数('+fReq+')');
+    if(targetE > fReq*mReq && targetE > 0) throw new Error('目标配对数不能超过理论最大值('+(fReq*mReq)+')');
+
+    const exclVal = document.getElementById('exclInput').value;
+    App.excluded = new Set(exclVal.split(/[,，\s]+/).filter(Boolean));
+    resetUid();
+
+    const parseList = (str) => str.split(/[,，\s]+/).filter(Boolean);
+    const mNames = parseList(document.getElementById('fixM').value);
+    App.fixedM = [];
+    for (const n of mNames) {
+        const inst = makeInstance(n);
+        if (!inst) throw new Error(`找不到母本: ${n}`);
+        if (App.excluded.has(n)) throw new Error(`母本 ${n} 在排除列表中`);
+        App.fixedM.push(inst);
+    }
+    const fNames = parseList(document.getElementById('fixF').value);
+    App.fixedF = [];
+    for (const n of fNames) {
+        const inst = makeInstance(n);
+        if (!inst) throw new Error(`找不到父本: ${n}`);
+        if (App.excluded.has(n)) throw new Error(`父本 ${n} 在排除列表中`);
+        App.fixedF.push(inst);
+    }
+
+    if(App.fixedM.length > mReq || App.fixedF.length > fReq) throw new Error('指定数量超限');
+
+    const usedAllNames = new Set([...mNames, ...fNames]);
+    App.candidates = [];
+    for (const base of App.spirits.values()) {
+        if (base.groups.size === 0) continue;
+        if (App.excluded.has(base.name)) continue;
+        if (usedAllNames.has(base.name)) continue;
+        App.candidates.push(makeInstance(base.name));
+    }
+
+    App.all = [...App.fixedM, ...App.fixedF, ...App.candidates];
+    const N = App.all.length;
+
+    const comp = Array(N).fill(null).map(()=>Array(N).fill(null));
+    for(let i=0;i<N;i++) {
+        for(let j=i+1;j<N;j++) {
+            const sh = getShared(App.all[i], App.all[j]);
+            if(sh.length>0) comp[i][j]=comp[j][i]=sh;
+        }
+    }
+
+    const fixedMIdx = App.fixedM.map(inst => App.all.findIndex(a => a.uid === inst.uid));
+    const fixedFIdx = App.fixedF.map(inst => App.all.findIndex(a => a.uid === inst.uid));
+    const candIdxList = App.candidates.map(inst => App.all.findIndex(a => a.uid === inst.uid));
+
+    const fixedShinyCount = App.fixedM.filter(s => s.isShiny).length;
+    const candShinyCount = App.candidates.filter(s => s.isShiny).length;
+    const hardMaxShiny = Math.min(fixedShinyCount + candShinyCount, mReq);
+    let effectiveShinyTarget = sTargetRaw;
+    let shinyWarning = null;
+    if (sTargetRaw > 0) {
+        if (sTargetRaw > hardMaxShiny) {
+            shinyWarning = `⚠️ 期望异色母本数(${sTargetRaw})超过最大可用数(${hardMaxShiny})，已自动降级为 ${hardMaxShiny}`;
+            effectiveShinyTarget = hardMaxShiny;
+        }
+        if (fixedShinyCount > sTargetRaw) throw new Error(`指定的母本中已有 ${fixedShinyCount} 个异色精灵，但期望异色母本数仅为 ${sTargetRaw}，冲突！`);
+    }
+
+    const fixedFShinyCount = App.fixedF.filter(s => s.isShiny).length;
+    const hardMaxFShiny = Math.min(fixedFShinyCount + candShinyCount, fReq);
+    let effectiveFShinyTarget = fShinyTargetRaw;
+    let fShinyWarning = null;
+    if (fShinyTargetRaw > 0) {
+        if (fShinyTargetRaw > hardMaxFShiny) {
+            fShinyWarning = `⚠️ 期望异色父本数(${fShinyTargetRaw})超过最大可用数(${hardMaxFShiny})，已自动降级为 ${hardMaxFShiny}`;
+            effectiveFShinyTarget = hardMaxFShiny;
+        }
+        if (fixedFShinyCount > fShinyTargetRaw) throw new Error(`指定的父本中已有 ${fixedFShinyCount} 个异色精灵，但期望异色父本数仅为 ${fShinyTargetRaw}，冲突！`);
+    }
+
+    App.best = {score:-1, m:[], f:[], edges:[], feasibleFound: false, shinyCount: 0, fShinyCount: 0, shinyWarning: shinyWarning || fShinyWarning, bothShinyEdges: 0};
+    let calls=0;
+    const MAX_CALLS = 2000000;
+
+    const shinySuffix = new Array(candIdxList.length + 1).fill(0);
+    for (let k = candIdxList.length - 1; k >= 0; k--) {
+        shinySuffix[k] = shinySuffix[k+1] + (App.all[candIdxList[k]].isShiny ? 1 : 0);
+    }
+
+    function dfs(ci, moms, dads, cur, scnt, fScnt) {
+        calls++; 
+        if(calls > MAX_CALLS) return;
+        
+        const mShinyNeeded = effectiveShinyTarget > 0 ? effectiveShinyTarget - scnt : 0;
+        const fShinyNeeded = effectiveFShinyTarget > 0 ? effectiveFShinyTarget - fScnt : 0;
+        const totalShinyNeeded = mShinyNeeded + fShinyNeeded;
+        
+        if (totalShinyNeeded > 0) {
+            const totalSlotsLeft = (mReq - moms.length) + (fReq - dads.length);
+            if (totalShinyNeeded > totalSlotsLeft || totalShinyNeeded > (shinySuffix[ci] || 0)) return;
+        }
+
+        if (!App.best.feasibleFound) {
+            for (const fm of App.fixedM) {
+                const fmIdx = App.all.findIndex(a => a.uid === fm.uid);
+                let hasLink = false;
+                for(const dIdx of dads) if(comp[fmIdx][dIdx]) { hasLink = true; break; }
+                if (!hasLink) {
+                    if (fReq - dads.length === 0) return;
+                    let hasCompat = false;
+                    for (let k = ci; k < candIdxList.length; k++) {
+                        if (comp[fmIdx][candIdxList[k]]) { hasCompat = true; break; }
+                    }
+                    if (!hasCompat) return;
+                }
+            }
+            for (const ff of App.fixedF) {
+                const ffIdx = App.all.findIndex(a => a.uid === ff.uid);
+                let hasLink = false;
+                for(const mIdx of moms) if(comp[mIdx][ffIdx]) { hasLink = true; break; }
+                if (!hasLink) {
+                    if (mReq - moms.length === 0) return;
+                    let hasCompat = false;
+                    for (let k = ci; k < candIdxList.length; k++) {
+                        if (comp[candIdxList[k]][ffIdx]) { hasCompat = true; break; }
+                    }
+                    if (!hasCompat) return;
+                }
+            }
+        }
+
+        if(moms.length===mReq && dads.length===fReq) {
+            if (effectiveShinyTarget > 0 && scnt !== effectiveShinyTarget) return;
+            if (effectiveFShinyTarget > 0 && fScnt !== effectiveFShinyTarget) return;
+
+            let allConnected = true;
+            for(const mIdx of moms) {
+                let hasEdge = false;
+                for(const fIdx of dads) { if(comp[mIdx][fIdx]) { hasEdge = true; break; } }
+                if(!hasEdge) { allConnected = false; break; }
+            }
+            if(allConnected) {
+                for(const fIdx of dads) {
+                    let hasEdge = false;
+                    for(const mIdx of moms) { if(comp[mIdx][fIdx]) { hasEdge = true; break; } }
+                    if(!hasEdge) { allConnected = false; break; }
+                }
+            }
+            if(!allConnected) return;
+
+            const edges = [];
+            const mObjs = moms.map(i=>App.all[i]);
+            const fObjs = dads.map(i=>App.all[i]);
+            let bothShinyEdges = 0;
+            for(let mi=0; mi<mObjs.length; mi++) {
+                for(let fi=0; fi<fObjs.length; fi++) {
+                    const mIdx=moms[mi], fIdx=dads[fi];
+                    if(comp[mIdx][fIdx]) {
+                        const w = calcWeight(mObjs[mi], fObjs[fi], enShiny);
+                        if(w > 1) bothShinyEdges++;
+                        edges.push({m:mObjs[mi], f:fObjs[fi], shared:comp[mIdx][fIdx], weight:w});
+                    }
+                }
+            }
+            
+            let valid = true;
+            for(const fm of App.fixedM) {
+                if(!edges.some(e => e.m.uid === fm.uid)) { valid = false; break; }
+            }
+            if(valid) {
+                for(const ff of App.fixedF) {
+                    if(!edges.some(e => e.f.uid === ff.uid)) { valid = false; break; }
+                }
+            }
+            if(valid && targetE > 0 && edges.length < targetE) valid = false;
+
+            if(valid) {
+                if(!App.best.feasibleFound || cur > App.best.score) {
+                    App.best = {score:cur, m:[...mObjs], f:[...fObjs], edges, feasibleFound: true, shinyCount: scnt, fShinyCount: fScnt, shinyWarning: App.best.shinyWarning, bothShinyEdges};
+                }
+            }
+            return;
+        }
+
+        if(ci >= candIdxList.length) return;
+        
+        if(App.best.feasibleFound) {
+            const remainingSlots = (mReq - moms.length) + (fReq - dads.length);
+            if (cur + remainingSlots * 1.5 <= App.best.score) return;
+        }
+
+        const sIdx = candIdxList[ci];
+        const s = App.all[sIdx];
+
+        dfs(ci+1, moms, dads, cur, scnt, fScnt);
+
+        if(moms.length < mReq) {
+            let add=0;
+            for(const dIdx of dads) if(comp[dIdx][sIdx]) add += calcWeight(s, App.all[dIdx], enShiny);
+            const ns = scnt+(s.isShiny?1:0);
+            const overLimit = (effectiveShinyTarget > 0 && ns > effectiveShinyTarget);
+            if(!overLimit) {
+                moms.push(sIdx);
+                dfs(ci+1, moms, dads, cur+add, ns, fScnt);
+                moms.pop();
+            }
+        }
+        if(dads.length < fReq) {
+            let add=0;
+            for(const mIdx of moms) if(comp[mIdx][sIdx]) add += calcWeight(App.all[mIdx], s, enShiny);
+            const fNs = fScnt + (s.isShiny ? 1 : 0);
+            const fOverLimit = (effectiveFShinyTarget > 0 && fNs > effectiveFShinyTarget);
+            if(!fOverLimit) {
+                dads.push(sIdx);
+                dfs(ci+1, moms, dads, cur+add, scnt, fNs);
+                dads.pop();
+            }
+        }
+    }
+
+    let base=0;
+    for(const mIdx of fixedMIdx) for(const fIdx of fixedFIdx) {
+        if(comp[mIdx][fIdx]) base += calcWeight(App.all[mIdx], App.all[fIdx], enShiny);
+    }
+    
+    dfs(0, [...fixedMIdx], [...fixedFIdx], base, fixedShinyCount, fixedFShinyCount);
+
+    if(!App.best.feasibleFound) {
+        let msg = '无法找到满足所有指定条件的解。';
+        if (effectiveShinyTarget > 0 || effectiveFShinyTarget > 0) {
+            msg += `\n(请检查：期望的异色数量是否过高？)`;
+        }
+        if(App.fixedM.length > 0 || App.fixedF.length > 0) {
+            msg += `\n(请检查：指定精灵是否有兼容对象？是否被排除？)`;
+        }
+        if (targetE > 0) msg += `\n(目标配对数 ${targetE} 可能无法满足)`;
+        msg += `\n(或无法让每个精灵都至少有一条连线)`;
+        throw new Error(msg);
+    }
+}
+
+function draw(res) {
+    const wrap=document.getElementById('netW'); if(!wrap)return;
+    const W=wrap.clientWidth, H=wrap.clientHeight;
+    const ns='http://www.w3.org/2000/svg';
+    const svg=document.createElementNS(ns,'svg'); svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    const pad=50, mN=res.m.length, fN=res.f.length;
+    const pos=(t,i,total)=>({x:t==='m'?pad:W-pad, y:pad+(H-2*pad)*(i+1)/(total+1)});
+    
+    const gL=document.createElementNS(ns,'g');
+    res.edges.forEach(e=>{
+        const mIdx = res.m.findIndex(x => x.uid === e.m.uid);
+        const fIdx = res.f.findIndex(x => x.uid === e.f.uid);
+        const p1=pos('m',mIdx,mN), p2=pos('f',fIdx,fN);
+        const p=document.createElementNS(ns,'path');
+        p.setAttribute('d',`M${p1.x},${p1.y} C${W/2},${p1.y} ${W/2},${p2.y} ${p2.x},${p2.y}`);
+        if (e.weight > 1) {
+            p.setAttribute('stroke', '#EC4899');
+            p.setAttribute('stroke-width', 4);
+        } else {
+            p.setAttribute('stroke', '#CBD5E1');
+            p.setAttribute('stroke-width', 2);
+        }
+        p.setAttribute('fill','none'); gL.appendChild(p);
+    });
+    svg.appendChild(gL);
+
+    const node=(s,t,idx,tot)=>{
+        const g=document.createElementNS(ns,'g'); g.style.cursor='pointer';
+        const p=pos(t,idx,tot);
+        const c=document.createElementNS(ns,'circle'); c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r',18);
+        c.setAttribute('fill', t==='m'?'#FF8FA3':'#4ECDC4'); c.setAttribute('stroke', s.isShiny?'#FFE66D':'#FFF'); c.setAttribute('stroke-width',s.isShiny?3:1);
+        const tEl=document.createElementNS(ns,'text'); tEl.setAttribute('x',p.x); tEl.setAttribute('y',p.y); tEl.setAttribute('text-anchor','middle'); tEl.setAttribute('dominant-baseline','central'); tEl.setAttribute('fill','#FFF'); tEl.setAttribute('font-size','10'); tEl.textContent=s.name;
+        g.appendChild(c); g.appendChild(tEl);
+        g.addEventListener('mouseenter',ev=>{
+            const tip=document.getElementById('tip'); tip.innerHTML=`<b>${s.name}</b> ${s.isShiny?'🌟':''}<br>角色:${t==='m'?'母本':'父本'}<br>组:${Array.from(s.groups).join(', ')||'无'}`; tip.style.display='block';
+        });
+        g.addEventListener('mousemove',ev=>{const tip=document.getElementById('tip'); tip.style.left=(ev.clientX+10)+'px'; tip.style.top=(ev.clientY-8)+'px';});
+        g.addEventListener('mouseleave',()=>document.getElementById('tip').style.display='none');
+        return g;
+    };
+
+    const gN=document.createElementNS(ns,'g');
+    res.m.forEach((s,i)=>gN.appendChild(node(s,'m',i,mN)));
+    res.f.forEach((s,i)=>gN.appendChild(node(s,'f',i,fN)));
+    svg.appendChild(gN);
+    wrap.innerHTML=''; wrap.appendChild(svg);
+}
+
+function render() {
+    const r=App.best, box=document.getElementById('sBox'), area=document.getElementById('rArea');
+    box.style.display='block';
+    if(!r.feasibleFound) { box.className='status err'; box.textContent='😢 无解，请调整参数试试！'; area.innerHTML='<div style="text-align:center;padding:20px;color:#A0AEC0">无数据</div>'; return; }
+    
+    const sTargetRaw = +document.getElementById('sNum').value||0;
+    const fShinyTargetRaw = +document.getElementById('fShinyNum').value||0;
+    
+    const sLabel = sTargetRaw === 0 ? `异色母本: ${r.shinyCount} 个(不限)` : `异色母本: ${r.shinyCount}/${sTargetRaw}`;
+    const fLabel = fShinyTargetRaw === 0 ? `异色父本: ${r.fShinyCount} 个(不限)` : `异色父本: ${r.fShinyCount}/${fShinyTargetRaw}`;
+    
+    let msg = `🎉 成功！总分 ${r.score.toFixed(1)} | 配对 ${r.edges.length} 组 | 双异色连线 ${r.bothShinyEdges} 条 | ${sLabel} | ${fLabel}`;
+    
+    box.className = r.shinyWarning ? 'status warn' : 'status succ';
+    box.textContent = r.shinyWarning ? `${r.shinyWarning}\n${msg}` : msg;
+    
+    let h='<table><thead><tr><th>🥚母本</th><th>👨父本</th><th>🔗共享组</th><th>⭐权重</th></tr></thead><tbody>';
+    r.edges.sort((a,b)=>b.weight-a.weight).forEach(e=>{
+        const inFixedM = App.fixedM.some(fm => fm.uid === e.m.uid);
+        const inFixedF = App.fixedF.some(ff => ff.uid === e.f.uid);
+        
+        let mtTag = '';
+        if (e.m.isShiny && e.f.isShiny) {
+            mtTag = '<span class="tag tag-both">✨✨双异色</span>';
+        } else if (e.m.isShiny) {
+            mtTag = '<span class="tag tag-shiny">✨母异色</span>';
+        } else if (e.f.isShiny) {
+            mtTag = '<span class="tag tag-shiny">✨父异色</span>';
+        }
+        if (!mtTag && inFixedM) mtTag = '<span class="tag tag-fix">📌指定</span>';
+        const ftTag = inFixedF ? '<span class="tag tag-fix">📌指定</span>' : '';
+        
+        h+=`<tr><td><b>${e.m.name}</b>${mtTag}</td><td>${e.f.name}${ftTag}</td><td>${e.shared.join(',')}</td><td>${e.weight}</td></tr>`;
+    });
+    h+='</tbody></table><div id="netW" class="svg-box"></div>';
+    area.innerHTML=h; requestAnimationFrame(()=>draw(r));
+}
+
+function showStatus(t,c){const b=document.getElementById('sBox');b.style.display='block';b.className='status '+c;b.textContent=t;}
+function updateStats(){let gs=new Set(); App.spirits.forEach(s=>s.groups.forEach(g=>gs.add(g))); document.getElementById('statC').textContent=App.spirits.size; document.getElementById('statG').textContent=gs.size;}
+function renderList(){const el=document.getElementById('sList'); el.innerHTML=Array.from(App.spirits.keys()).sort().map(n=>`<span onclick="copyName(this,'${n}')">${n}</span>`).join(' ');}
+function copyName(el, name) {
+    if(navigator.clipboard) navigator.clipboard.writeText(name).then(()=>{el.style.color='#FF6B6B'; setTimeout(()=>el.style.color='',500);});
+}
+function validate(){
+    const f=+document.getElementById('fNum').value,m=+document.getElementById('mNum').value,s=+document.getElementById('sNum').value,fs=+document.getElementById('fShinyNum').value,tv=document.getElementById('targetE').value.trim(),t=tv===''?0:+tv,w=document.getElementById('wMsg');
+    if(f+m>10){w.textContent='⚠️ 总数≤10';return false;}
+    if(s>m){w.textContent='⚠️ 异色母本≤母本数('+m+')';return false;}
+    if(fs>f){w.textContent='⚠️ 异色父本≤父本数('+f+')';return false;}
+    if(m<1){w.textContent='⚠️ 母本≥1';return false;}
+    if(t>f*m && t>0){w.textContent='⚠️ 配对数超上限('+(f*m)+')';return false;}
+    w.textContent=''; return true;
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+    init();
+    const dz=document.getElementById('dropZone'), fi=document.getElementById('fileInput');
+    dz.onclick=()=>fi.click(); dz.ondragover=e=>{e.preventDefault();dz.style.borderColor='#FF6B6B';}; dz.ondragleave=()=>dz.style.borderColor='#FFE66D';
+    dz.ondrop=e=>{e.preventDefault();dz.style.borderColor='#FFE66D'; if(e.dataTransfer.files[0]) parseExcel(e.dataTransfer.files[0]);};
+    fi.onchange=e=>{if(e.target.files[0]) parseExcel(e.target.files[0]);};
+    ['fNum','mNum','sNum','fShinyNum','targetE'].forEach(id=>document.getElementById(id).addEventListener('input',validate));
+    
+    document.getElementById('btnGo').onclick=()=>{
+        if(!validate()) return; const btn=document.getElementById('btnGo');
+        btn.disabled=true; btn.textContent='⏳ 计算中...'; showStatus('','succ'); document.getElementById('sBox').style.display='none';
+        document.getElementById('rArea').innerHTML='<div style="text-align:center;padding:20px">🐾 正在深度搜索最优网络...</div>';
+        setTimeout(()=>{
+            try{solve();render();}
+            catch(e){showStatus('⚠️ '+e.message,'err'); document.getElementById('rArea').innerHTML='<div style="text-align:center;padding:20px;color:#EF4444">计算中断</div>';}
+            finally { btn.disabled=false; btn.textContent='⚡ 开始计算'; }
+        }, 50);
+    };
+    document.getElementById('btnReset').onclick=()=>{
+        document.getElementById('fixM').value=''; document.getElementById('fixF').value='';
+        document.getElementById('exclInput').value=''; document.getElementById('sNum').value='0';
+        document.getElementById('fShinyNum').value='0'; document.getElementById('targetE').value=''; 
+        showStatus('','succ'); document.getElementById('sBox').style.display='none';
+    };
+});
+</script>
+</body>
+</html>
+
